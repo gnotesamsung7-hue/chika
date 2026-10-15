@@ -1,0 +1,14 @@
+{
+  "appId": "com.markdave.chika",
+  "appName": "Chika",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 800,
+      "backgroundColor": "#000000"
+    }
+  }
+}

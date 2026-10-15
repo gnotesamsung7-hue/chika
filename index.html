@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#0F0F0F">
+<script>
+window.THEMES = {
+  red:{n:"Red",l:"#D7191F",d:"#EF2B32"}, orange:{n:"Orange",l:"#D9480F",d:"#F76707"},
+  pink:{n:"Pink",l:"#D6336C",d:"#E64980"}, purple:{n:"Purple",l:"#7B3FE4",d:"#9466F0"},
+  blue:{n:"Blue",l:"#1D63ED",d:"#3B82F6"}, teal:{n:"Teal",l:"#0E7C86",d:"#14A3AF"},
+  green:{n:"Green",l:"#1F8A4C",d:"#2FB463"}
+};
+window.getPref = function(k, d){ try { return localStorage.getItem("chika-"+k) || d; } catch(e){ return d; } };
+window.setPref = function(k, v){ try { localStorage.setItem("chika-"+k, v); } catch(e){} };
+window.applyTheme = function(){
+  var t = THEMES[getPref("theme","red")] || THEMES.red, m = getPref("mode","dark"), r = document.documentElement;
+  r.style.setProperty("--accent-l", t.l); r.style.setProperty("--accent-d", t.d);
+  if (m === "auto") r.removeAttribute("data-mode"); else r.setAttribute("data-mode", m);
+  var dark = m === "dark" || (m === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
+  var bar = dark ? "#0F0F0F" : "#FFFFFF";
+  document.querySelector('meta[name="theme-color"]').content = bar;
+  var SB = window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.StatusBar;
+  if (SB) { SB.setBackgroundColor({color:bar}).catch(function(){}); SB.setStyle({style: dark ? "DARK" : "LIGHT"}).catch(function(){}); }
+};
+applyTheme();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
+</script>
+<title>Chika</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --accent:var(--accent-l,#D7191F); --on-accent:#FFFFFF;
+  --bg:#F4F4F5; --panel:#FFFFFF; --ink:#111113; --muted:#6B6B70; --line:#E4E4E7; --them:#EBEBED; --danger:#C2412D;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-mode="light"]){
+  --accent:var(--accent-d,#EF2B32);
+  --bg:#000000; --panel:#0F0F0F; --ink:#F5F5F5; --muted:#9A9A9F; --line:#262626; --them:#1F1F1F; --danger:#FF6B5B;
+  color-scheme:dark;
+}}
+:root[data-mode="dark"]{
+  --accent:var(--accent-d,#EF2B32);
+  --bg:#000000; --panel:#0F0F0F; --ink:#F5F5F5; --muted:#9A9A9F; --line:#262626; --them:#1F1F1F; --danger:#FF6B5B;
+  color-scheme:dark;
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{font-family:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);
+  padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0);overflow:hidden}
+button{font:inherit;cursor:pointer;border:0;background:none;color:inherit}
+input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.hidden{display:none!important}
+
+/* Auth */
+#auth{height:100%;display:grid;place-items:center;padding:24px}
+.auth-card{width:100%;max-width:360px}
+.logo{font-size:52px;font-weight:800;letter-spacing:-2px;color:var(--ink);line-height:1}
+.logo span{display:inline-block;width:14px;height:14px;border-radius:50%;background:var(--accent);margin-left:4px}
+.tag{color:var(--muted);margin:8px 0 28px}
+.field{display:block;width:100%;padding:14px 16px;border-radius:14px;border:1.5px solid var(--line);background:var(--panel);margin-bottom:10px;outline:none}
+.field:focus{border-color:var(--accent)}
+.btn{width:100%;padding:14px;border-radius:14px;background:var(--accent);color:var(--on-accent);font-weight:700;margin-top:6px}
+.btn.ghost{background:var(--bg);color:var(--ink)}
+.btn.danger{background:none;color:var(--danger)}
+.btn:disabled{opacity:.6}
+.link{color:var(--accent);font-weight:600;margin-top:16px;display:block;width:100%;text-align:center}
+.err{color:var(--danger);font-size:14px;min-height:20px;margin-top:10px}
+
+/* Shell */
+#app{height:100%;display:flex}
+#listPane{width:100%;max-width:380px;display:flex;flex-direction:column;background:var(--panel);border-right:1px solid var(--line)}
+#chatPane{flex:1;display:flex;flex-direction:column;min-width:0}
+@media (max-width:760px){
+  #listPane{max-width:none;border:0}
+  #app.in-chat #listPane{display:none}
+  #app:not(.in-chat) #chatPane{display:none}
+}
+.top{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
+.top h1{font-size:24px;font-weight:800;letter-spacing:-.5px;flex:1}
+.icon-btn{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--bg);flex:none}
+.icon-btn svg{width:20px;height:20px}
+.icon-btn.plain{background:none;color:var(--accent)}
+.icon-btn.plain svg{width:24px;height:24px}
+.search{margin:12px 16px 4px;padding:11px 16px;border-radius:999px;border:0;background:var(--bg);outline:none;width:calc(100% - 32px)}
+
+.avatar{flex:none;width:48px;height:48px;border-radius:50%;display:grid;place-items:center;font-weight:700;color:#fff;position:relative;font-size:18px}
+.avatar.sm{width:36px;height:36px;font-size:14px}
+.avatar.group{border-radius:16px}
+.avatar.sm.group{border-radius:12px}
+.avatar .dot{position:absolute;right:-1px;bottom:-1px;width:13px;height:13px;border-radius:50%;background:#2DBE60;border:2.5px solid var(--panel)}
+
+#chatList{flex:1;overflow-y:auto;padding:6px 8px}
+.row{display:flex;align-items:center;gap:12px;padding:10px;border-radius:14px;width:100%;text-align:left}
+.row:hover,.row.active{background:var(--bg)}
+.row .meta{flex:1;min-width:0}
+.row .name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .preview{color:var(--muted);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row.unread .name,.row.unread .preview{font-weight:700;color:var(--ink)}
+.row .unread-dot{width:11px;height:11px;border-radius:50%;background:var(--accent);flex:none}
+.empty{padding:40px 24px;text-align:center;color:var(--muted);line-height:1.5}
+
+/* Chat */
+#chatHead .who{flex:1;min-width:0;text-align:left;display:flex;align-items:center;gap:12px}
+#chatHead .who div{min-width:0}
+#chatHead .who b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#chatHead .who small{color:var(--muted)}
+#backBtn{display:none}
+@media (max-width:760px){#backBtn{display:grid}}
+#messages{flex:1;overflow-y:auto;padding:16px 12px 8px;display:flex;flex-direction:column;gap:2px}
+.day{align-self:center;color:var(--muted);font-size:12px;font-weight:600;margin:14px 0 8px}
+.sys{align-self:center;color:var(--muted);font-size:13px;margin:8px 0;text-align:center}
+.sender{font-size:12px;color:var(--muted);margin:10px 0 2px 14px}
+.msg{max-width:min(75%,520px);padding:9px 14px;border-radius:20px;line-height:1.4;word-wrap:break-word;white-space:pre-wrap}
+.msg.me{align-self:flex-end;background:var(--accent);color:var(--on-accent)}
+.msg.them{align-self:flex-start;background:var(--them)}
+.msg.me + .msg.me{border-top-right-radius:6px}
+.msg.them + .msg.them{border-top-left-radius:6px}
+.msg.big{background:none!important;font-size:44px;padding:0 4px;line-height:1.1}
+.msg.photo{padding:0;background:none!important;overflow:hidden;border-radius:18px;width:min(240px,65vw)}
+.msg.photo img{display:block;width:100%;height:auto;background:var(--them);cursor:zoom-in}
+.msg.photo img.loading{filter:blur(8px);transform:scale(1.05)}
+.msg.file{display:flex;align-items:center;gap:10px;text-align:left;cursor:pointer}
+.msg.file .ficon{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:rgba(255,255,255,.22);flex:none}
+.msg.them.file .ficon{background:var(--panel)}
+.msg.file .ficon svg{width:18px;height:18px}
+.msg.file b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px}
+.msg.file small{opacity:.75}
+.msg.pending{opacity:.7}
+.seen{align-self:flex-end;font-size:12px;color:var(--muted);margin:3px 4px 0}
+.typing-wrap{align-self:flex-start;display:flex;align-items:center;gap:8px;margin-top:6px;color:var(--muted);font-size:12px}
+.typing{background:var(--them);border-radius:20px;padding:12px 14px;display:flex;gap:4px}
+.typing i{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:bob 1.2s infinite}
+.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes bob{0%,60%,100%{transform:none;opacity:.5}30%{transform:translateY(-4px);opacity:1}}
+@media (prefers-reduced-motion:reduce){.typing i{animation:none}}
+.compose{display:flex;align-items:flex-end;gap:4px;padding:10px 8px;border-top:1px solid var(--line);background:var(--panel)}
+#msgInput{flex:1;padding:11px 16px;border-radius:22px;border:0;background:var(--bg);outline:none;resize:none;max-height:120px;line-height:1.4;margin:0 4px}
+#sendBtn{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:24px;flex:none}
+#sendBtn svg{width:24px;height:24px;color:var(--accent)}
+.placeholder{flex:1;display:grid;place-items:center;color:var(--muted);text-align:center;padding:24px}
+
+/* Sheets */
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);display:grid;place-items:end center;z-index:10}
+@media (min-width:761px){.sheet-bg{place-items:center}}
+.sheet{width:100%;max-width:420px;max-height:88vh;overflow-y:auto;background:var(--panel);border-radius:22px 22px 0 0;padding:22px 20px calc(22px + env(safe-area-inset-bottom,0))}
+@media (min-width:761px){.sheet{border-radius:22px}}
+.sheet h2{font-size:20px;margin-bottom:6px}
+.sheet p{color:var(--muted);font-size:14px;margin-bottom:16px}
+.sheet h3{font-size:14px;color:var(--muted);font-weight:600;margin:18px 0 8px}
+.seg{display:flex;background:var(--bg);border-radius:12px;padding:4px;margin-bottom:16px}
+.seg button{flex:1;padding:9px;border-radius:9px;font-weight:600;color:var(--muted)}
+.seg button.on{background:var(--panel);color:var(--ink)}
+.inline{display:flex;gap:8px}
+.inline .field{margin:0}
+.inline .btn{width:auto;margin:0;padding:0 18px}
+.pick{display:flex;align-items:center;gap:12px;padding:8px 4px;width:100%;text-align:left;border-radius:12px}
+.pick span{flex:1;font-weight:500}
+.pick input{width:20px;height:20px;accent-color:var(--accent)}
+.chip-list{max-height:240px;overflow-y:auto}
+
+.swatches{display:flex;flex-wrap:wrap;gap:10px}
+.swatch{width:38px;height:38px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
+.swatch.on{outline:3px solid var(--ink);outline-offset:3px}
+#setWho{margin-bottom:6px}
+
+/* Viewer */
+#viewer{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:20;display:flex;flex-direction:column}
+#viewer .vbar{display:flex;justify-content:space-between;padding:calc(12px + env(safe-area-inset-top,0)) 12px 12px}
+#viewer .icon-btn{background:rgba(255,255,255,.14);color:#fff}
+#viewer img{flex:1;min-height:0;object-fit:contain;width:100%;padding:0 8px calc(16px + env(safe-area-inset-bottom,0))}
+</style>
+</head>
+<body>
+
+<section id="auth" class="hidden">
+  <form class="auth-card" id="authForm">
+    <div class="logo">chika<span></span></div>
+    <p class="tag">Chat with your family and friends.</p>
+    <input class="field hidden" id="nameIn" placeholder="Your name" autocomplete="name">
+    <input class="field" id="emailIn" type="email" placeholder="Email" autocomplete="email" required>
+    <input class="field" id="passIn" type="password" placeholder="Password (6+ characters)" autocomplete="current-password" required minlength="6">
+    <button class="btn" id="authBtn" type="submit">Log in</button>
+    <div class="err" id="authErr"></div>
+    <button class="link" id="toggleAuth" type="button">New here? Create an account</button>
+  </form>
+</section>
+
+<main id="app" class="hidden">
+  <section id="listPane">
+    <div class="top">
+      <h1>Chats</h1>
+      <button class="icon-btn" id="newChatBtn" aria-label="New chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+      <button class="icon-btn" id="settingsBtn" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+    </div>
+    <input class="search" id="searchIn" placeholder="Search chats">
+    <div id="chatList"></div>
+  </section>
+
+  <section id="chatPane">
+    <div class="placeholder" id="noChat">Pick a chat, or tap + to start one.</div>
+    <div class="top hidden" id="chatHead">
+      <button class="icon-btn" id="backBtn" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <button class="who" id="headWho"><div class="avatar sm" id="headAvatar"></div><div><b id="headName"></b><small id="headStatus"></small></div></button>
+    </div>
+    <div id="messages" class="hidden" aria-live="polite"></div>
+    <form class="compose hidden" id="compose">
+      <button type="button" class="icon-btn plain" id="photoBtn" aria-label="Send photo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></svg></button>
+      <button type="button" class="icon-btn plain" id="fileBtn" aria-label="Send file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 11-8.6 8.6a5 5 0 0 1-7-7l8.5-8.6a3.3 3.3 0 0 1 4.7 4.7l-8.6 8.6a1.7 1.7 0 0 1-2.3-2.4l7.9-7.9"/></svg></button>
+      <input type="file" id="photoIn" accept="image/*" multiple hidden>
+      <input type="file" id="fileIn" multiple hidden>
+      <textarea id="msgInput" rows="1" placeholder="Aa"></textarea>
+      <button id="sendBtn" type="submit" aria-label="Send"></button>
+    </form>
+  </section>
+</main>
+
+<!-- New chat / group -->
+<div class="sheet-bg hidden" id="newSheet">
+  <div class="sheet">
+    <div class="seg"><button id="segChat" class="on" type="button">Chat</button><button id="segGroup" type="button">Group</button></div>
+    <form id="newForm">
+      <h2>New chat</h2>
+      <p>Enter the email they signed up with.</p>
+      <input class="field" id="newEmail" type="email" placeholder="name@email.com" required>
+      <button class="btn" type="submit">Start chat</button>
+      <div class="err" id="newErr"></div>
+    </form>
+    <form id="groupForm" class="hidden">
+      <h2>New group</h2>
+      <input class="field" id="groupName" placeholder="Group name, e.g. Pamilya" required maxlength="60">
+      <h3>Add people</h3>
+      <div class="inline"><input class="field" id="groupEmail" type="email" placeholder="Add by email"><button class="btn ghost" type="button" id="groupAddBtn">Add</button></div>
+      <div class="chip-list" id="groupPicks"></div>
+      <button class="btn" type="submit" style="margin-top:16px">Create group</button>
+      <div class="err" id="groupErr"></div>
+    </form>
+  </div>
+</div>
+
+<!-- Group info -->
+<div class="sheet-bg hidden" id="infoSheet">
+  <div class="sheet">
+    <h2>Group info</h2>
+    <div class="inline" style="margin-top:12px"><input class="field" id="renameIn" maxlength="60"><button class="btn ghost" id="renameBtn" type="button">Rename</button></div>
+    <h3 id="memberCount">Members</h3>
+    <div id="memberList"></div>
+    <h3>Add someone</h3>
+    <div class="inline"><input class="field" id="addEmail" type="email" placeholder="name@email.com"><button class="btn ghost" id="addBtn" type="button">Add</button></div>
+    <div class="err" id="infoErr"></div>
+    <button class="btn danger" id="leaveBtn" type="button">Leave group</button>
+  </div>
+</div>
+
+<!-- Settings -->
+<div class="sheet-bg hidden" id="setSheet">
+  <div class="sheet">
+    <h2>Settings</h2>
+    <h3>Theme color</h3>
+    <div class="swatches" id="swatches"></div>
+    <h3>Appearance</h3>
+    <div class="seg" id="modeSeg">
+      <button type="button" data-m="auto">Auto</button><button type="button" data-m="light">Light</button><button type="button" data-m="dark">Dark</button>
+    </div>
+    <h3>Account</h3>
+    <p id="setWho"></p>
+    <button class="btn danger" id="logoutBtn" type="button">Log out</button>
+  </div>
+</div>
+
+<div id="viewer" class="hidden">
+  <div class="vbar">
+    <button class="icon-btn" id="vClose" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <a class="icon-btn" id="vSave" aria-label="Save photo" download="chika-photo.jpg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m-5-5 5 5 5-5M5 20h14"/></svg></a>
+  </div>
+  <img id="vImg" alt="">
+</div>
+
+<script type="module">
+// ============ 1. PASTE YOUR FIREBASE CONFIG HERE ============
+const firebaseConfig = {
+  apiKey: "PASTE_HERE",
+  authDomain: "PASTE_HERE",
+  projectId: "PASTE_HERE",
+  storageBucket: "PASTE_HERE",
+  messagingSenderId: "PASTE_HERE",
+  appId: "PASTE_HERE"
+};
+// =============================================================
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+  updateProfile, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDocs, collection, query, where, orderBy, limit, onSnapshot,
+  addDoc, serverTimestamp, updateDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const fb = initializeApp(firebaseConfig);
+const auth = getAuth(fb);
+const db = getFirestore(fb);
+const $ = id => document.getElementById(id);
+const NATIVE = !!window.Capacitor?.isNativePlatform?.();
+const Cap = window.Capacitor?.Plugins || {};
+
+const MAX_FILE = 10 * 1024 * 1024;     // 10 MB per file
+const CHUNK = 700_000;                  // base64 chars per Firestore doc (<1 MB limit)
+
+let me = null, chats = [], openId = null, openChatData = null, lastMsgs = [], pending = [];
+let unsubChats = null, unsubMsgs = null, unsubChatDoc = null, presenceTimer = null, lastTypingSent = 0;
+const usersCache = {}, urlCache = {}, loadingBlobs = {};
+
+// ---------- helpers ----------
+const COLORS = ["#0E7C86","#D9480F","#5F3DC4","#2B8A3E","#C2255C","#1864AB","#E67700","#495057"];
+const colorFor = s => COLORS[[...s].reduce((a,c)=>a+c.charCodeAt(0),0) % COLORS.length];
+const initials = n => (n||"?").trim().split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase();
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const ms = t => t?.toMillis ? t.toMillis() : 0;
+const isOnline = u => u && Date.now() - ms(u.lastSeen) < 90_000;
+const pairId = (a,b) => [a,b].sort().join("_");
+const others = c => (c.members||[]).filter(m => m !== me.uid);
+const nameOf = uid => uid === me?.uid ? "You" : (usersCache[uid]?.name || "…");
+const firstName = uid => nameOf(uid).split(" ")[0];
+const myName = () => me.displayName || usersCache[me.uid]?.name || "Someone";
+const onlyEmoji = t => /^(\p{Extended_Pictographic}|\uFE0F|\u200D|\s){1,6}$/u.test(t);
+const fmtSize = b => b < 1024 ? b+" B" : b < 1048576 ? (b/1024).toFixed(0)+" KB" : (b/1048576).toFixed(1)+" MB";
+const chatTitle = c => c.isGroup ? (c.name || "Group") : nameOf(others(c)[0]);
+function timeAgo(t){
+  const m = Math.floor((Date.now()-ms(t))/60000);
+  if (m < 1) return "now"; if (m < 60) return m+"m"; const h = Math.floor(m/60);
+  if (h < 24) return h+"h"; const d = Math.floor(h/24); return d < 7 ? d+"d" : new Date(ms(t)).toLocaleDateString();
+}
+function avatarHTML(c, sm=""){
+  const online = others(c).some(u => isOnline(usersCache[u]));
+  const key = c.isGroup ? c.id : others(c)[0] || c.id;
+  return `<div class="avatar ${sm} ${c.isGroup?"group":""}" style="background:${colorFor(key)}">${esc(initials(chatTitle(c)))}${online?'<span class="dot"></span>':""}</div>`;
+}
+function watchUser(uid){
+  if (!uid || usersCache[uid]) return;
+  usersCache[uid] = { name:"…" };
+  onSnapshot(doc(db,"users",uid), s => { usersCache[uid] = s.data() || {name:"Unknown"}; renderList(); if (openId) { renderHead(); renderMessages(); } });
+}
+async function findUserByEmail(email){
+  const res = await getDocs(query(collection(db,"users"), where("emailLower","==",email.trim().toLowerCase()), limit(1)));
+  return res.empty ? null : res.docs[0].id;
+}
+const sysMsg = (cid, text) => addDoc(collection(db,"chats",cid,"messages"), { type:"system", text, sender: me.uid, at: serverTimestamp() });
+
+// ---------- auth ----------
+let signingUp = false;
+$("toggleAuth").onclick = () => {
+  signingUp = !signingUp;
+  $("nameIn").classList.toggle("hidden", !signingUp);
+  $("nameIn").required = signingUp;
+  $("authBtn").textContent = signingUp ? "Create account" : "Log in";
+  $("toggleAuth").textContent = signingUp ? "Have an account? Log in" : "New here? Create an account";
+  $("authErr").textContent = "";
+};
+$("authForm").onsubmit = async e => {
+  e.preventDefault();
+  const email = $("emailIn").value.trim(), pass = $("passIn").value, name = $("nameIn").value.trim();
+  $("authBtn").disabled = true; $("authErr").textContent = "";
+  try {
+    if (signingUp) {
+      const cred = await createUserWithEmailAndPassword(auth, email, pass);
+      await updateProfile(cred.user, { displayName: name });
+      await setDoc(doc(db,"users",cred.user.uid), { name, email, emailLower: email.toLowerCase(), lastSeen: serverTimestamp() });
+    } else {
+      await signInWithEmailAndPassword(auth, email, pass);
+    }
+  } catch (err) {
+    const map = { "auth/invalid-credential":"Wrong email or password.", "auth/email-already-in-use":"That email already has an account. Log in instead.",
+      "auth/weak-password":"Use at least 6 characters.", "auth/invalid-email":"That email doesn't look right." };
+    $("authErr").textContent = map[err.code] || err.message;
+  }
+  $("authBtn").disabled = false;
+};
+$("logoutBtn").onclick = () => { $("setSheet").classList.add("hidden"); signOut(auth); };
+
+// ---------- settings: theme color & appearance ----------
+function renderSettings(){
+  const cur = getPref("theme","red"), mode = getPref("mode","dark");
+  const dark = mode === "dark" || (mode === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
+  $("swatches").innerHTML = Object.entries(THEMES).map(([k,t]) =>
+    `<button type="button" class="swatch ${k===cur?"on":""}" data-t="${k}" aria-label="${t.n}" title="${t.n}" style="background:${dark?t.d:t.l}"></button>`).join("");
+  $("modeSeg").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.m === mode));
+  $("setWho").textContent = me ? `${me.displayName || ""} · ${me.email}` : "";
+}
+$("settingsBtn").onclick = () => { renderSettings(); $("setSheet").classList.remove("hidden"); };
+$("swatches").onclick = e => { const b = e.target.closest(".swatch"); if (!b) return; setPref("theme", b.dataset.t); applyTheme(); renderSettings(); };
+$("modeSeg").onclick = e => { const b = e.target.closest("button"); if (!b) return; setPref("mode", b.dataset.m); applyTheme(); renderSettings(); };
+
+onAuthStateChanged(auth, user => {
+  me = user;
+  $("auth").classList.toggle("hidden", !!user);
+  $("app").classList.toggle("hidden", !user);
+  clearInterval(presenceTimer); unsubChats?.(); closeChat();
+  if (!user) return;
+  watchUser(me.uid);
+  const ping = () => setDoc(doc(db,"users",me.uid), { lastSeen: serverTimestamp() }, { merge:true });
+  ping(); presenceTimer = setInterval(ping, 60_000);
+  unsubChats = onSnapshot(query(collection(db,"chats"), where("members","array-contains",me.uid)), snap => {
+    chats = snap.docs.map(d => ({ id:d.id, ...d.data() })).sort((a,b) => ms(b.lastAt) - ms(a.lastAt));
+    chats.forEach(c => c.members.forEach(watchUser));
+    if (openId && !chats.some(c => c.id === openId)) closeChat();  // left or removed
+    renderList();
+  });
+});
+
+// ---------- chat list ----------
+$("searchIn").oninput = renderList;
+function previewText(c){
+  if (!c.lastMessage) return c.isGroup ? "Group created" : "Say hi 👋";
+  const who = c.lastSender === me.uid ? "You: " : c.isGroup ? firstName(c.lastSender) + ": " : "";
+  return who + c.lastMessage;
+}
+function renderList(){
+  if (!me) return;
+  const q = $("searchIn").value.toLowerCase();
+  if (!chats.length) { $("chatList").innerHTML = `<div class="empty">No chats yet.<br>Tap + to message someone or start a group.</div>`; return; }
+  $("chatList").innerHTML = chats.filter(c => chatTitle(c).toLowerCase().includes(q)).map(c => {
+    const unread = c.lastSender && c.lastSender !== me.uid && ms(c.lastAt) > ms(c.readAt?.[me.uid]);
+    return `<button class="row ${c.id===openId?"active":""} ${unread?"unread":""}" data-id="${c.id}">
+      ${avatarHTML(c)}
+      <div class="meta"><div class="name">${esc(chatTitle(c))}</div>
+      <div class="preview">${esc(previewText(c))}${c.lastAt?" · "+timeAgo(c.lastAt):""}</div></div>
+      ${unread?'<span class="unread-dot"></span>':""}</button>`;
+  }).join("");
+  $("chatList").querySelectorAll(".row").forEach(b => b.onclick = () => openChat(b.dataset.id));
+}
+
+// ---------- new chat / group sheet ----------
+let groupPicks = new Set();
+function setSeg(group){
+  $("segChat").classList.toggle("on", !group); $("segGroup").classList.toggle("on", group);
+  $("newForm").classList.toggle("hidden", group); $("groupForm").classList.toggle("hidden", !group);
+  if (group) renderPicks();
+}
+$("segChat").onclick = () => setSeg(false);
+$("segGroup").onclick = () => setSeg(true);
+$("newChatBtn").onclick = () => {
+  ["newErr","groupErr"].forEach(i => $(i).textContent = "");
+  ["newEmail","groupName","groupEmail"].forEach(i => $(i).value = "");
+  groupPicks = new Set(); setSeg(false);
+  $("newSheet").classList.remove("hidden"); $("newEmail").focus();
+};
+document.querySelectorAll(".sheet-bg").forEach(bg => bg.addEventListener("click", e => { if (e.target === bg) bg.classList.add("hidden"); }));
+
+$("newForm").onsubmit = async e => {
+  e.preventDefault();
+  const email = $("newEmail").value;
+  if (email.trim().toLowerCase() === me.email.toLowerCase()) { $("newErr").textContent = "That's your own email."; return; }
+  const uid = await findUserByEmail(email);
+  if (!uid) { $("newErr").textContent = "No one with that email yet. Ask them to sign up first."; return; }
+  const id = pairId(me.uid, uid);
+  await setDoc(doc(db,"chats",id), { members:[me.uid, uid].sort(), isGroup:false }, { merge:true });
+  $("newSheet").classList.add("hidden");
+  openChat(id);
+};
+
+function knownPeople(){
+  const s = new Set(groupPicks);
+  chats.forEach(c => others(c).forEach(u => s.add(u)));
+  return [...s].sort((a,b) => nameOf(a).localeCompare(nameOf(b)));
+}
+function renderPicks(){
+  const list = knownPeople();
+  $("groupPicks").innerHTML = list.length ? list.map(u => `<label class="pick">
+      <div class="avatar sm" style="background:${colorFor(u)}">${esc(initials(nameOf(u)))}</div>
+      <span>${esc(nameOf(u))}</span><input type="checkbox" data-uid="${u}" ${groupPicks.has(u)?"checked":""}></label>`).join("")
+    : `<p style="margin:8px 0 0">Add people by email above.</p>`;
+  $("groupPicks").querySelectorAll("input").forEach(cb => cb.onchange = () => cb.checked ? groupPicks.add(cb.dataset.uid) : groupPicks.delete(cb.dataset.uid));
+}
+$("groupAddBtn").onclick = async () => {
+  const email = $("groupEmail").value; if (!email.trim()) return;
+  const uid = await findUserByEmail(email);
+  if (!uid) { $("groupErr").textContent = "No one with that email yet."; return; }
+  if (uid === me.uid) { $("groupErr").textContent = "You're already in the group."; return; }
+  $("groupErr").textContent = ""; $("groupEmail").value = "";
+  watchUser(uid); groupPicks.add(uid); renderPicks();
+};
+$("groupForm").onsubmit = async e => {
+  e.preventDefault();
+  const name = $("groupName").value.trim();
+  if (groupPicks.size < 1) { $("groupErr").textContent = "Pick at least one person."; return; }
+  const ref = await addDoc(collection(db,"chats"), { isGroup:true, name, createdBy: me.uid,
+    members:[me.uid, ...groupPicks], lastMessage:`${myName()} created the group`, lastSender: me.uid, lastAt: serverTimestamp() });
+  await sysMsg(ref.id, `${myName()} created the group`);
+  $("newSheet").classList.add("hidden");
+  openChat(ref.id);
+};
+
+// ---------- group info ----------
+$("headWho").onclick = () => {
+  if (!openChatData?.isGroup) return;
+  $("renameIn").value = openChatData.name || ""; $("infoErr").textContent = ""; $("addEmail").value = "";
+  renderMembers(); $("infoSheet").classList.remove("hidden");
+};
+function renderMembers(){
+  const m = openChatData.members || [];
+  $("memberCount").textContent = `${m.length} members`;
+  $("memberList").innerHTML = m.map(u => `<div class="pick"><div class="avatar sm" style="background:${colorFor(u)}">${esc(initials(nameOf(u)))}${isOnline(usersCache[u])?'<span class="dot"></span>':""}</div><span>${esc(nameOf(u))}</span></div>`).join("");
+}
+$("renameBtn").onclick = async () => {
+  const n = $("renameIn").value.trim(); if (!n || n === openChatData.name) return;
+  await updateDoc(doc(db,"chats",openId), { name:n });
+  await sysMsg(openId, `${myName()} renamed the group to ${n}`);
+  $("infoSheet").classList.add("hidden");
+};
+$("addBtn").onclick = async () => {
+  const uid = await findUserByEmail($("addEmail").value);
+  if (!uid) { $("infoErr").textContent = "No one with that email yet."; return; }
+  if (openChatData.members.includes(uid)) { $("infoErr").textContent = "They're already in the group."; return; }
+  watchUser(uid);
+  await updateDoc(doc(db,"chats",openId), { members: arrayUnion(uid) });
+  await sysMsg(openId, `${myName()} added ${usersCache[uid]?.name || "someone"}`);
+  $("addEmail").value = ""; $("infoErr").textContent = ""; renderMembers();
+};
+$("leaveBtn").onclick = async () => {
+  if (!confirm("Leave this group? You'll stop getting its messages.")) return;
+  const id = openId;
+  await sysMsg(id, `${myName()} left the group`);          // must happen while still a member
+  await updateDoc(doc(db,"chats",id), { members: arrayRemove(me.uid) });
+  $("infoSheet").classList.add("hidden"); closeChat();
+};
+
+// ---------- open chat ----------
+function closeChat(){
+  unsubMsgs?.(); unsubChatDoc?.(); unsubMsgs = unsubChatDoc = null; openId = null; openChatData = null;
+  $("app").classList.remove("in-chat");
+  ["chatHead","messages","compose"].forEach(i => $(i).classList.add("hidden"));
+  $("noChat").classList.remove("hidden");
+}
+$("backBtn").onclick = () => { closeChat(); renderList(); };
+
+function openChat(id){
+  closeChat(); openId = id;
+  $("app").classList.add("in-chat");
+  ["chatHead","messages","compose"].forEach(i => $(i).classList.remove("hidden"));
+  $("noChat").classList.add("hidden");
+  $("messages").innerHTML = ""; lastMsgs = [];
+  unsubChatDoc = onSnapshot(doc(db,"chats",id), s => {
+    if (!s.exists()) return;
+    openChatData = { id, ...s.data() }; openChatData.members.forEach(watchUser);
+    renderHead(); renderMessages();
+  });
+  unsubMsgs = onSnapshot(query(collection(db,"chats",id,"messages"), orderBy("at","desc"), limit(200)), snap => {
+    lastMsgs = snap.docs.map(d => d.data()).reverse();
+    renderMessages(); markRead();
+  });
+  renderList(); updateSendBtn();
+  if (!matchMedia("(pointer:coarse)").matches) $("msgInput").focus();
+}
+function renderHead(){
+  const c = openChatData; if (!c?.members) return;
+  $("headName").textContent = chatTitle(c);
+  $("headAvatar").outerHTML = avatarHTML(c, "sm").replace('<div class="avatar', '<div id="headAvatar" class="avatar');
+  const ot = others(c);
+  if (c.isGroup) {
+    const on = ot.filter(u => isOnline(usersCache[u])).length;
+    $("headStatus").textContent = `${c.members.length} members` + (on ? ` · ${on} active` : "");
+  } else {
+    const u = usersCache[ot[0]] || {};
+    $("headStatus").textContent = isOnline(u) ? "Active now" : u.lastSeen ? "Active " + timeAgo(u.lastSeen) + " ago" : "";
+  }
+}
+function markRead(){
+  if (!openId || document.hidden) return;
+  updateDoc(doc(db,"chats",openId), { ["readAt."+me.uid]: serverTimestamp() }).catch(()=>{});
+}
+document.addEventListener("visibilitychange", markRead);
+
+const FILE_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>`;
+
+function bubble(m, mine){
+  const side = mine ? "me" : "them";
+  if (m.type === "image") {
+    const src = urlCache[m.fileId] || m.thumb || "";
+    return `<div class="msg photo ${side}"><img data-fid="${m.fileId}" data-mime="${esc(m.mime)}" src="${src}" class="${urlCache[m.fileId]?"":"loading"}" style="aspect-ratio:${m.w||4}/${m.h||3}" alt="Photo"></div>`;
+  }
+  if (m.type === "file") {
+    return `<button class="msg file ${side}" data-fid="${m.fileId}" data-mime="${esc(m.mime)}" data-name="${esc(m.name)}"><span class="ficon">${FILE_SVG}</span><span><b>${esc(m.name)}</b><small>${fmtSize(m.size)} · Tap to open</small></span></button>`;
+  }
+  return `<div class="msg ${side} ${onlyEmoji(m.text)?"big":""}">${esc(m.text)}</div>`;
+}
+
+function renderMessages(){
+  const box = $("messages"), c = openChatData;
+  const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 150;
+  let html = "", lastDay = "", prevSender = null;
+  lastMsgs.forEach(m => {
+    const d = m.at ? new Date(ms(m.at)) : new Date();
+    const day = d.toDateString();
+    if (day !== lastDay) { lastDay = day; prevSender = null;
+      html += `<div class="day">${day === new Date().toDateString() ? "Today" : d.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"})}</div>`; }
+    if (m.type === "system") { html += `<div class="sys">${esc(m.text)}</div>`; prevSender = null; return; }
+    const mine = m.sender === me.uid;
+    if (c?.isGroup && !mine && m.sender !== prevSender) html += `<div class="sender">${esc(nameOf(m.sender))}</div>`;
+    html += bubble(m, mine);
+    prevSender = m.sender;
+  });
+  pending.filter(p => p.cid === openId).forEach(p => {
+    html += `<div class="msg me pending">${esc(p.label)} · ${p.pct}%</div>`;
+  });
+  if (c?.members && lastMsgs.length) {
+    const last = [...lastMsgs].reverse().find(m => m.type !== "system");
+    if (last && last.sender === me.uid && last.at) {
+      const seenBy = others(c).filter(u => ms(c.readAt?.[u]) >= ms(last.at));
+      if (seenBy.length) html += `<div class="seen">${c.isGroup ? (seenBy.length === others(c).length ? "Seen by everyone" : "Seen by " + seenBy.map(firstName).join(", ")) : "Seen"}</div>`;
+    }
+    const typers = others(c).filter(u => Date.now() - ms(c.typing?.[u]) < 5000);
+    if (typers.length) html += `<div class="typing-wrap"><div class="typing"><i></i><i></i><i></i></div>${c.isGroup ? esc(typers.map(firstName).join(", ")) : ""}</div>`;
+  }
+  box.innerHTML = html;
+  hydrate();
+  if (nearBottom || lastMsgs.at(-1)?.sender === me.uid) box.scrollTop = box.scrollHeight;
+}
+setInterval(() => { if (openId) { renderMessages(); renderHead(); } }, 5000);
+
+// ---------- photos & files: storage in Firestore chunks ----------
+async function deliverFile(url, name){
+  if (!NATIVE) {
+    const a = document.createElement("a"); a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove(); return;
+  }
+  // In the APK: write to app cache, then open Android's share sheet (Save, open in Files, send to other apps)
+  const blob = await (await fetch(url)).blob();
+  const data = await blobToB64(blob);
+  const safe = (name || "file").replace(/[^\w.\- ]/g, "_");
+  const { uri } = await Cap.Filesystem.writeFile({ path: safe, data, directory: "CACHE" });
+  try { await Cap.Share.share({ title: safe, files: [uri] }); } catch (e) { /* user closed the share sheet */ }
+}
+function blobToB64(blob){
+  return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result.split(",")[1]); r.onerror = rej; r.readAsDataURL(blob); });
+}
+function b64ToBlob(b64, mime){
+  const bin = atob(b64), bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: mime || "application/octet-stream" });
+}
+function loadBlob(cid, fid, mime){
+  if (urlCache[fid]) return Promise.resolve(urlCache[fid]);
+  return loadingBlobs[fid] ||= (async () => {
+    const snap = await getDocs(collection(db,"chats",cid,"files",fid,"chunks"));
+    const b64 = snap.docs.sort((a,b) => a.id.localeCompare(b.id)).map(d => d.data().d).join("");
+    return urlCache[fid] = URL.createObjectURL(b64ToBlob(b64, mime));
+  })();
+}
+function hydrate(){
+  const cid = openId;
+  $("messages").querySelectorAll("img.loading[data-fid]").forEach(img => {
+    loadBlob(cid, img.dataset.fid, img.dataset.mime).then(url => { img.src = url; img.classList.remove("loading"); }).catch(()=>{});
+  });
+}
+$("messages").addEventListener("click", async e => {
+  const img = e.target.closest("img[data-fid]");
+  if (img) { const url = await loadBlob(openId, img.dataset.fid, img.dataset.mime);
+    $("vImg").src = url; $("vSave").href = url; $("viewer").classList.remove("hidden"); return; }
+  const f = e.target.closest(".msg.file");
+  if (f) {
+    const small = f.querySelector("small"), old = small.textContent; small.textContent = "Opening…";
+    try { const url = await loadBlob(openId, f.dataset.fid, f.dataset.mime);
+      await deliverFile(url, f.dataset.name);
+    } catch { alert("Couldn't open that file."); }
+    small.textContent = old;
+  }
+});
+$("vClose").onclick = () => $("viewer").classList.add("hidden");
+$("vSave").onclick = e => { if (NATIVE) { e.preventDefault(); deliverFile($("vSave").href, "chika-photo.jpg"); } };
+
+// Android back button: close viewer/sheets, then leave the chat, then minimize
+if (NATIVE && Cap.App) Cap.App.addListener("backButton", () => {
+  if (!$("viewer").classList.contains("hidden")) { $("viewer").classList.add("hidden"); return; }
+  const sheets = [...document.querySelectorAll(".sheet-bg:not(.hidden)")];
+  if (sheets.length) { sheets.forEach(x => x.classList.add("hidden")); return; }
+  if (openId && matchMedia("(max-width:760px)").matches) { closeChat(); renderList(); return; }
+  Cap.App.minimizeApp();
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape") $("viewer").classList.add("hidden"); });
+
+async function compressImage(file){
+  const bmp = await createImageBitmap(file);
+  const keepOriginal = file.type === "image/gif" && file.size < 3e6;  // keep small GIFs animated
+  const scale = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+  const w = Math.round(bmp.width * scale), h = Math.round(bmp.height * scale);
+  const cv = Object.assign(document.createElement("canvas"), { width:w, height:h });
+  cv.getContext("2d").drawImage(bmp, 0, 0, w, h);
+  const blob = keepOriginal ? file : await new Promise(r => cv.toBlob(r, "image/jpeg", 0.82));
+  const t = Object.assign(document.createElement("canvas"), { width:24, height:Math.max(1, Math.round(24*h/w)) });
+  t.getContext("2d").drawImage(bmp, 0, 0, t.width, t.height);
+  return { blob, w, h, thumb: t.toDataURL("image/jpeg", 0.5) };
+}
+async function uploadBlob(cid, blob, onPct){
+  const b64 = await blobToB64(blob);
+  const n = Math.max(1, Math.ceil(b64.length / CHUNK));
+  const fref = doc(collection(db,"chats",cid,"files"));
+  await setDoc(fref, { chunks:n, mime: blob.type || "application/octet-stream", size: blob.size, by: me.uid, at: serverTimestamp() });
+  for (let i = 0; i < n; i++) {
+    await setDoc(doc(db,"chats",cid,"files",fref.id,"chunks",String(i).padStart(4,"0")), { d: b64.slice(i*CHUNK, (i+1)*CHUNK) });
+    onPct(Math.round((i+1)/n*100));
+  }
+  urlCache[fref.id] = URL.createObjectURL(blob);
+  return fref.id;
+}
+async function sendAttachment(file, asPhoto){
+  const cid = openId;
+  if (!asPhoto && file.size > MAX_FILE) { alert(`${file.name} is over 10 MB. Try a smaller file.`); return; }
+  const p = { cid, label: asPhoto ? "Sending photo" : `Sending ${file.name}`, pct: 0 };
+  pending.push(p); renderMessages();
+  try {
+    let msg;
+    if (asPhoto) {
+      const { blob, w, h, thumb } = await compressImage(file);
+      if (blob.size > MAX_FILE) throw new Error("too big");
+      const fileId = await uploadBlob(cid, blob, pct => { p.pct = pct; renderMessages(); });
+      msg = { type:"image", fileId, mime: blob.type, w, h, thumb, text:"", preview:"📷 Photo" };
+    } else {
+      const fileId = await uploadBlob(cid, file, pct => { p.pct = pct; renderMessages(); });
+      msg = { type:"file", fileId, mime: file.type || "application/octet-stream", name: file.name, size: file.size, text:"", preview:`📎 ${file.name}` };
+    }
+    const { preview, ...data } = msg;
+    await postMessage(cid, data, preview);
+  } catch (err) {
+    alert(`Couldn't send ${asPhoto ? "that photo" : file.name}. Check your connection and try again.`);
+  } finally {
+    pending = pending.filter(x => x !== p); renderMessages();
+  }
+}
+$("photoBtn").onclick = () => $("photoIn").click();
+$("fileBtn").onclick = () => $("fileIn").click();
+$("photoIn").onchange = e => { [...e.target.files].forEach(f => sendAttachment(f, true)); e.target.value = ""; };
+$("fileIn").onchange = e => { [...e.target.files].forEach(f => sendAttachment(f, false)); e.target.value = ""; };
+
+// ---------- compose ----------
+async function postMessage(cid, data, preview){
+  await addDoc(collection(db,"chats",cid,"messages"), { ...data, sender: me.uid, at: serverTimestamp() });
+  await updateDoc(doc(db,"chats",cid), { lastMessage: preview.slice(0,80), lastSender: me.uid, lastAt: serverTimestamp(),
+    ["typing."+me.uid]: null, ["readAt."+me.uid]: serverTimestamp() });
+}
+const SEND_SVG = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.4 20.4 21 12 3.4 3.6l.1 6.5L15 12 3.5 13.9z"/></svg>`;
+function updateSendBtn(){ $("sendBtn").innerHTML = $("msgInput").value.trim() ? SEND_SVG : "👍"; }
+$("msgInput").addEventListener("input", () => {
+  const t = $("msgInput"); t.style.height = "auto"; t.style.height = t.scrollHeight + "px";
+  updateSendBtn();
+  if (openId && Date.now() - lastTypingSent > 3000) {
+    lastTypingSent = Date.now();
+    updateDoc(doc(db,"chats",openId), { ["typing."+me.uid]: serverTimestamp() }).catch(()=>{});
+  }
+});
+$("msgInput").addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey && !matchMedia("(pointer:coarse)").matches) { e.preventDefault(); $("compose").requestSubmit(); }
+});
+$("compose").onsubmit = e => {
+  e.preventDefault();
+  const text = $("msgInput").value.trim() || "👍";
+  $("msgInput").value = ""; $("msgInput").style.height = "auto"; updateSendBtn();
+  lastTypingSent = 0;
+  postMessage(openId, { type:"text", text }, text);
+};
+// Paste a screenshot straight into the chat
+$("msgInput").addEventListener("paste", e => {
+  const imgs = [...(e.clipboardData?.files || [])].filter(f => f.type.startsWith("image/"));
+  if (imgs.length) { e.preventDefault(); imgs.forEach(f => sendAttachment(f, true)); }
+});
+</script>
+</body>
+</html>

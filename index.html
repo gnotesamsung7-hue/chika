@@ -27,8 +27,6 @@ applyTheme();
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
 </script>
 <title>Chika</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
   --accent:var(--accent-l,#D7191F); --on-accent:#FFFFFF;
@@ -47,7 +45,7 @@ matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme
 }
 *{box-sizing:border-box;margin:0}
 html,body{height:100%}
-body{font-family:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);
   padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0);overflow:hidden}
 button{font:inherit;cursor:pointer;border:0;background:none;color:inherit}
 input,textarea{font:inherit;color:inherit}
@@ -166,6 +164,38 @@ input,textarea{font:inherit;color:inherit}
 .swatch.on{outline:3px solid var(--ink);outline-offset:3px}
 #setWho{margin-bottom:6px}
 
+#boot{position:fixed;inset:0;display:grid;place-items:center;background:var(--bg);z-index:30}
+#boot small{display:block;color:var(--muted);margin-top:10px;text-align:center}
+#netBar{position:fixed;left:50%;transform:translateX(-50%);top:calc(78px + env(safe-area-inset-top,0));z-index:25;white-space:nowrap;
+  background:var(--ink);color:var(--bg);font-size:13px;font-weight:600;padding:8px 14px;border-radius:999px;max-width:92vw;text-align:center}
+.msg.photo{position:relative}
+.tapload{position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-size:13px;font-weight:700;
+  background:rgba(0,0,0,.35);cursor:pointer;text-align:center;padding:8px}
+.older{align-self:center;color:var(--accent);font-weight:600;font-size:13px;padding:6px 12px;margin-bottom:6px}
+.msg.unsent{opacity:.65}
+
+/* Swipe rows */
+.swipe{position:relative;border-radius:14px;overflow:hidden;touch-action:pan-y;margin-bottom:2px}
+.swipe .row{position:relative;background:var(--panel);transition:transform .22s ease}
+.swipe .row:hover,.swipe .row.active{background:var(--bg)}
+.swipe.dragging .row{transition:none}
+.swipe-bg{position:absolute;inset:0;display:flex;justify-content:space-between;align-items:center;padding:0 22px;font-weight:700;color:#fff;font-size:14px}
+.swipe-bg span{display:flex;align-items:center;gap:8px}
+.swipe-bg svg{width:20px;height:20px}
+.swipe[data-dir="right"] .swipe-bg{background:#1864AB}
+.swipe[data-dir="left"] .swipe-bg{background:#C92A2A}
+.swipe[data-dir="right"] .del,.swipe[data-dir="left"] .arch{visibility:hidden}
+.swipe.armed .swipe-bg span{transform:scale(1.12)}
+.arch-link{display:block;width:100%;padding:14px;color:var(--muted);font-weight:600;font-size:14px}
+.tip{margin:4px 10px 10px;padding:10px 12px;border-radius:12px;background:var(--bg);color:var(--muted);font-size:13px}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(90px + env(safe-area-inset-bottom,0));z-index:26;
+  background:var(--ink);color:var(--bg);border-radius:14px;padding:10px 10px 10px 16px;display:flex;align-items:center;gap:14px;font-size:14px;font-weight:600;white-space:nowrap}
+#toast button{color:var(--accent);font-weight:800;padding:4px 8px}
+#smsBar{display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 12px;font-size:13px;color:var(--muted);border-top:1px solid var(--line);background:var(--panel)}
+#smsBar button{color:var(--accent);font-weight:700}
+.set-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.set-row button{color:var(--accent);font-weight:700}
+
 /* Viewer */
 #viewer{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:20;display:flex;flex-direction:column}
 #viewer .vbar{display:flex;justify-content:space-between;padding:calc(12px + env(safe-area-inset-top,0)) 12px 12px}
@@ -174,6 +204,12 @@ input,textarea{font:inherit;color:inherit}
 </style>
 </head>
 <body>
+
+<div id="boot"><div><div class="logo">chika<span></span></div><small id="bootMsg">Loading…</small></div></div>
+<script>
+setTimeout(function(){ var b=document.getElementById("boot"); if (b && !b.classList.contains("hidden")) document.getElementById("bootMsg").textContent = "Slow connection. Still loading…"; }, 6000);
+</script>
+<div id="netBar" class="hidden">No signal. Messages will send later.</div>
 
 <section id="auth" class="hidden">
   <form class="auth-card" id="authForm">
@@ -191,7 +227,8 @@ input,textarea{font:inherit;color:inherit}
 <main id="app" class="hidden">
   <section id="listPane">
     <div class="top">
-      <h1>Chats</h1>
+      <button class="icon-btn hidden" id="archBack" aria-label="Back to chats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <h1 id="listTitle">Chats</h1>
       <button class="icon-btn" id="newChatBtn" aria-label="New chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
       <button class="icon-btn" id="settingsBtn" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
     </div>
@@ -206,6 +243,7 @@ input,textarea{font:inherit;color:inherit}
       <button class="who" id="headWho"><div class="avatar sm" id="headAvatar"></div><div><b id="headName"></b><small id="headStatus"></small></div></button>
     </div>
     <div id="messages" class="hidden" aria-live="polite"></div>
+    <div id="smsBar" class="hidden">No mobile data? <button type="button" id="smsBtn">Send as text message</button></div>
     <form class="compose hidden" id="compose">
       <button type="button" class="icon-btn plain" id="photoBtn" aria-label="Send photo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></svg></button>
       <button type="button" class="icon-btn plain" id="fileBtn" aria-label="Send file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 11-8.6 8.6a5 5 0 0 1-7-7l8.5-8.6a3.3 3.3 0 0 1 4.7 4.7l-8.6 8.6a1.7 1.7 0 0 1-2.3-2.4l7.9-7.9"/></svg></button>
@@ -264,11 +302,22 @@ input,textarea{font:inherit;color:inherit}
     <div class="seg" id="modeSeg">
       <button type="button" data-m="auto">Auto</button><button type="button" data-m="light">Light</button><button type="button" data-m="dark">Dark</button>
     </div>
+    <h3>Data saver</h3>
+    <div class="seg" id="saverSeg">
+      <button type="button" data-s="auto">Auto</button><button type="button" data-s="on">On</button><button type="button" data-s="off">Off</button>
+    </div>
+    <p id="saverNote"></p>
+    <div id="notifBlock" class="hidden">
+      <h3>Notifications</h3>
+      <div class="set-row"><p id="notifState" style="margin:0"></p><button type="button" id="notifBtn" class="hidden">Turn on</button></div>
+    </div>
     <h3>Account</h3>
     <p id="setWho"></p>
     <button class="btn danger" id="logoutBtn" type="button">Log out</button>
   </div>
 </div>
+
+<div id="toast" class="hidden"><span id="toastMsg"></span><button type="button" id="toastUndo">Undo</button></div>
 
 <div id="viewer" class="hidden">
   <div class="vbar">
@@ -289,16 +338,32 @@ const firebaseConfig = {
   appId: "1:12436813384:web:f97fec2a40c35b614d8a7d"
 };
 // =============================================================
+// 2. PASTE YOUR CLOUDFLARE WORKER URL HERE (for push notifications), e.g. "https://chika-push.yourname.workers.dev"
+const PUSH_URL = "";
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword,
   updateProfile, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDocs, collection, query, where, orderBy, limit, onSnapshot,
-  addDoc, serverTimestamp, updateDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, setDoc, getDocs, collection, query, where, orderBy, limit, onSnapshot,
+  addDoc, serverTimestamp, updateDoc, arrayUnion, arrayRemove, disableNetwork, enableNetwork, waitForPendingWrites } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const fb = initializeApp(firebaseConfig);
 const auth = getAuth(fb);
-const db = getFirestore(fb);
+let db;
+try { db = initializeFirestore(fb, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) }); }
+catch (e) { db = getFirestore(fb); }   // e.g. private browsing without storage
+
+// ---------- slow-network / data saver ----------
+function slowNet(){
+  const c = navigator.connection;
+  return !!c && (c.saveData || ["slow-2g","2g"].includes(c.effectiveType));
+}
+const saverOn = () => { const m = getPref("saver","auto"); return m === "on" || (m === "auto" && slowNet()); };
+function updateNetBar(){ $("netBar").classList.toggle("hidden", navigator.onLine); }
+addEventListener("online", updateNetBar); addEventListener("offline", updateNetBar); updateNetBar();
+
+// Web only: cache the app so it opens instantly next time, even on 2G (the APK already has it built in)
+if (!NATIVE && "serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(()=>{});
 const $ = id => document.getElementById(id);
 const NATIVE = !!window.Capacitor?.isNativePlatform?.();
 const Cap = window.Capacitor?.Plugins || {};
@@ -306,6 +371,7 @@ const Cap = window.Capacitor?.Plugins || {};
 const MAX_FILE = 10 * 1024 * 1024;     // 10 MB per file
 const CHUNK = 700_000;                  // base64 chars per Firestore doc (<1 MB limit)
 
+let msgLimit = 30, moreOlder = false, pingNow = null, pushToken = null, openFromPush = null;
 let me = null, chats = [], openId = null, openChatData = null, lastMsgs = [], pending = [];
 let unsubChats = null, unsubMsgs = null, unsubChatDoc = null, presenceTimer = null, lastTypingSent = 0;
 const usersCache = {}, urlCache = {}, loadingBlobs = {};
@@ -316,7 +382,7 @@ const colorFor = s => COLORS[[...s].reduce((a,c)=>a+c.charCodeAt(0),0) % COLORS.
 const initials = n => (n||"?").trim().split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase();
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const ms = t => t?.toMillis ? t.toMillis() : 0;
-const isOnline = u => u && Date.now() - ms(u.lastSeen) < 90_000;
+const isOnline = u => u && Date.now() - ms(u.lastSeen) < 200_000;
 const pairId = (a,b) => [a,b].sort().join("_");
 const others = c => (c.members||[]).filter(m => m !== me.uid);
 const nameOf = uid => uid === me?.uid ? "You" : (usersCache[uid]?.name || "…");
@@ -375,7 +441,11 @@ $("authForm").onsubmit = async e => {
   }
   $("authBtn").disabled = false;
 };
-$("logoutBtn").onclick = () => { $("setSheet").classList.add("hidden"); signOut(auth); };
+$("logoutBtn").onclick = async () => {
+  $("setSheet").classList.add("hidden");
+  if (pushToken && me) await setDoc(doc(db,"tokens",me.uid), { tokens: arrayRemove(pushToken) }, { merge:true }).catch(()=>{});
+  signOut(auth);
+};
 
 // ---------- settings: theme color & appearance ----------
 function renderSettings(){
@@ -384,23 +454,33 @@ function renderSettings(){
   $("swatches").innerHTML = Object.entries(THEMES).map(([k,t]) =>
     `<button type="button" class="swatch ${k===cur?"on":""}" data-t="${k}" aria-label="${t.n}" title="${t.n}" style="background:${dark?t.d:t.l}"></button>`).join("");
   $("modeSeg").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.m === mode));
+  const sv = getPref("saver","auto");
+  $("saverSeg").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.s === sv));
+  $("saverNote").textContent = saverOn()
+    ? "On: photos load when you tap them, sent photos are smaller, and typing dots are off."
+    : (sv === "auto" ? "Turns on by itself when your connection is 2G or very slow." : "Off: photos load automatically.");
   $("setWho").textContent = me ? `${me.displayName || ""} · ${me.email}` : "";
 }
 $("settingsBtn").onclick = () => { renderSettings(); $("setSheet").classList.remove("hidden"); };
 $("swatches").onclick = e => { const b = e.target.closest(".swatch"); if (!b) return; setPref("theme", b.dataset.t); applyTheme(); renderSettings(); };
+$("saverSeg").onclick = e => { const b = e.target.closest("button"); if (!b) return; setPref("saver", b.dataset.s); renderSettings(); if (openId) renderMessages(); };
 $("modeSeg").onclick = e => { const b = e.target.closest("button"); if (!b) return; setPref("mode", b.dataset.m); applyTheme(); renderSettings(); };
 
 onAuthStateChanged(auth, user => {
   me = user;
+  $("boot").classList.add("hidden");
   $("auth").classList.toggle("hidden", !!user);
   $("app").classList.toggle("hidden", !user);
   clearInterval(presenceTimer); unsubChats?.(); closeChat();
   if (!user) return;
   watchUser(me.uid);
+  setupPush();
+  if (openFromPush) { const id = openFromPush; openFromPush = null; openChat(id); }
   const ping = () => setDoc(doc(db,"users",me.uid), { lastSeen: serverTimestamp() }, { merge:true });
-  ping(); presenceTimer = setInterval(ping, 60_000);
+  pingNow = ping;
+  let tick = 0; ping(); presenceTimer = setInterval(() => { if (document.hidden) return; tick++; if (!saverOn() || tick % 3 === 0) ping(); }, 60_000);
   unsubChats = onSnapshot(query(collection(db,"chats"), where("members","array-contains",me.uid)), snap => {
-    chats = snap.docs.map(d => ({ id:d.id, ...d.data() })).sort((a,b) => ms(b.lastAt) - ms(a.lastAt));
+    chats = snap.docs.map(d => ({ id:d.id, ...d.data({ serverTimestamps:"estimate" }) })).sort((a,b) => ms(b.lastAt) - ms(a.lastAt));
     chats.forEach(c => c.members.forEach(watchUser));
     if (openId && !chats.some(c => c.id === openId)) closeChat();  // left or removed
     renderList();
@@ -414,19 +494,102 @@ function previewText(c){
   const who = c.lastSender === me.uid ? "You: " : c.isGroup ? firstName(c.lastSender) + ": " : "";
   return who + c.lastMessage;
 }
+const myCut = (c, f) => c[f]?.[me.uid];
+const isDeleted = c => { const t = myCut(c,"deletedAt"); return !!t && ms(t) >= ms(c.lastAt); };
+const isArchived = c => { const t = myCut(c,"archivedAt"); return !!t && ms(t) >= ms(c.lastAt); };
+let showArchived = false, swallowClick = false;
+const ARCH_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9M10 13h4"/></svg>`;
+const DEL_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>`;
+
 function renderList(){
   if (!me) return;
   const q = $("searchIn").value.toLowerCase();
-  if (!chats.length) { $("chatList").innerHTML = `<div class="empty">No chats yet.<br>Tap + to message someone or start a group.</div>`; return; }
-  $("chatList").innerHTML = chats.filter(c => chatTitle(c).toLowerCase().includes(q)).map(c => {
+  const live = chats.filter(c => !isDeleted(c));
+  const archived = live.filter(isArchived);
+  const list = (showArchived ? archived : live.filter(c => !isArchived(c))).filter(c => chatTitle(c).toLowerCase().includes(q));
+  $("listTitle").textContent = showArchived ? "Archived" : "Chats";
+  $("archBack").classList.toggle("hidden", !showArchived);
+  $("newChatBtn").classList.toggle("hidden", showArchived);
+  let html = "";
+  if (!list.length) html = `<div class="empty">${showArchived ? "No archived chats." : "No chats yet.<br>Tap + to message someone or start a group."}</div>`;
+  else if (!showArchived && getPref("swipetip","") !== "seen") html += `<div class="tip">Tip: swipe a chat left to delete it, or right to archive it.</div>`;
+  html += list.map(c => {
     const unread = c.lastSender && c.lastSender !== me.uid && ms(c.lastAt) > ms(c.readAt?.[me.uid]);
-    return `<button class="row ${c.id===openId?"active":""} ${unread?"unread":""}" data-id="${c.id}">
+    return `<div class="swipe" data-id="${c.id}">
+      <div class="swipe-bg"><span class="arch">${ARCH_SVG}${showArchived ? "Unarchive" : "Archive"}</span><span class="del">Delete${DEL_SVG}</span></div>
+      <button class="row ${c.id===openId?"active":""} ${unread?"unread":""}" data-id="${c.id}">
       ${avatarHTML(c)}
       <div class="meta"><div class="name">${esc(chatTitle(c))}</div>
       <div class="preview">${esc(previewText(c))}${c.lastAt?" · "+timeAgo(c.lastAt):""}</div></div>
-      ${unread?'<span class="unread-dot"></span>':""}</button>`;
+      ${unread?'<span class="unread-dot"></span>':""}</button></div>`;
   }).join("");
-  $("chatList").querySelectorAll(".row").forEach(b => b.onclick = () => openChat(b.dataset.id));
+  if (!showArchived && archived.length) html += `<button class="arch-link" id="archLink">Archived chats (${archived.length})</button>`;
+  $("chatList").innerHTML = html;
+  $("chatList").querySelectorAll(".swipe").forEach(el => {
+    const c = chats.find(x => x.id === el.dataset.id);
+    el.querySelector(".row").onclick = () => { if (!swallowClick) openChat(c.id); };
+    attachSwipe(el, c);
+  });
+  $("archLink")?.addEventListener("click", () => { showArchived = true; renderList(); });
+}
+$("archBack").onclick = () => { showArchived = false; renderList(); };
+
+function attachSwipe(el, c){
+  const row = el.querySelector(".row");
+  let x0 = 0, y0 = 0, dx = 0, drag = false, active = false, armed = false;
+  el.addEventListener("pointerdown", e => { if (e.button) return; x0 = e.clientX; y0 = e.clientY; dx = 0; drag = false; active = true; });
+  el.addEventListener("pointermove", e => {
+    if (!active) return;
+    const mx = e.clientX - x0, my = e.clientY - y0;
+    if (!drag) {
+      if (Math.abs(mx) > 12 && Math.abs(mx) > Math.abs(my) * 1.5) { drag = true; el.classList.add("dragging"); el.setPointerCapture?.(e.pointerId); }
+      else { if (Math.abs(my) > 12) active = false; return; }
+    }
+    dx = mx; el.dataset.dir = dx < 0 ? "left" : "right";
+    row.style.transform = `translateX(${dx}px)`;
+    const nowArmed = Math.abs(dx) > el.offsetWidth * 0.35;
+    if (nowArmed !== armed) { armed = nowArmed; el.classList.toggle("armed", armed); if (armed) navigator.vibrate?.(12); }
+  });
+  const end = () => {
+    if (!active) return; active = false;
+    if (!drag) return;
+    el.classList.remove("dragging");
+    swallowClick = true; setTimeout(() => swallowClick = false, 80);
+    const w = el.offsetWidth;
+    if (armed && dx < 0) { row.style.transform = `translateX(${-w}px)`; setTimeout(() => deleteChat(c), 200); }
+    else if (armed && dx > 0) { row.style.transform = `translateX(${w}px)`; setTimeout(() => toggleArchive(c), 200); }
+    else row.style.transform = "";
+    armed = false; el.classList.remove("armed");
+  };
+  el.addEventListener("pointerup", end); el.addEventListener("pointercancel", end);
+}
+
+let toastTimer = null, toastUndoFn = null;
+function toast(msg, undo){
+  $("toastMsg").textContent = msg; toastUndoFn = undo;
+  $("toastUndo").classList.toggle("hidden", !undo);
+  $("toast").classList.remove("hidden");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => $("toast").classList.add("hidden"), 5000);
+}
+$("toastUndo").onclick = () => { $("toast").classList.add("hidden"); toastUndoFn?.(); };
+
+function deleteChat(c){
+  setPref("swipetip","seen");
+  const prevDel = myCut(c,"deletedAt") ?? null, prevArch = myCut(c,"archivedAt") ?? null;
+  if (openId === c.id) closeChat();
+  updateDoc(doc(db,"chats",c.id), { ["deletedAt."+me.uid]: serverTimestamp(), ["archivedAt."+me.uid]: null }).catch(()=>{});
+  toast(`Deleted ${chatTitle(c)}`, () => updateDoc(doc(db,"chats",c.id), { ["deletedAt."+me.uid]: prevDel, ["archivedAt."+me.uid]: prevArch }));
+}
+function toggleArchive(c){
+  setPref("swipetip","seen");
+  if (isArchived(c)) {
+    updateDoc(doc(db,"chats",c.id), { ["archivedAt."+me.uid]: null }).catch(()=>{});
+    toast(`Moved ${chatTitle(c)} back to chats`);
+  } else {
+    if (openId === c.id) closeChat();
+    updateDoc(doc(db,"chats",c.id), { ["archivedAt."+me.uid]: serverTimestamp() }).catch(()=>{});
+    toast(`Archived ${chatTitle(c)}`, () => updateDoc(doc(db,"chats",c.id), { ["archivedAt."+me.uid]: null }));
+  }
 }
 
 // ---------- new chat / group sheet ----------
@@ -528,7 +691,7 @@ $("leaveBtn").onclick = async () => {
 function closeChat(){
   unsubMsgs?.(); unsubChatDoc?.(); unsubMsgs = unsubChatDoc = null; openId = null; openChatData = null;
   $("app").classList.remove("in-chat");
-  ["chatHead","messages","compose"].forEach(i => $(i).classList.add("hidden"));
+  ["chatHead","messages","compose","smsBar"].forEach(i => $(i).classList.add("hidden"));
   $("noChat").classList.remove("hidden");
 }
 $("backBtn").onclick = () => { closeChat(); renderList(); };
@@ -541,16 +704,27 @@ function openChat(id){
   $("messages").innerHTML = ""; lastMsgs = [];
   unsubChatDoc = onSnapshot(doc(db,"chats",id), s => {
     if (!s.exists()) return;
-    openChatData = { id, ...s.data() }; openChatData.members.forEach(watchUser);
+    openChatData = { id, ...s.data({ serverTimestamps:"estimate" }) }; openChatData.members.forEach(watchUser); updateSmsBar();
     renderHead(); renderMessages();
   });
-  unsubMsgs = onSnapshot(query(collection(db,"chats",id,"messages"), orderBy("at","desc"), limit(200)), snap => {
-    lastMsgs = snap.docs.map(d => d.data()).reverse();
-    renderMessages(); markRead();
-  });
+  msgLimit = 30; listenMsgs(id);
   renderList(); updateSendBtn();
   if (!matchMedia("(pointer:coarse)").matches) $("msgInput").focus();
 }
+function listenMsgs(id){
+  unsubMsgs?.();
+  unsubMsgs = onSnapshot(query(collection(db,"chats",id,"messages"), orderBy("at","desc"), limit(msgLimit)),
+    { includeMetadataChanges: true }, snap => {
+      moreOlder = snap.size >= msgLimit;
+      lastMsgs = snap.docs.map(d => ({ ...d.data({ serverTimestamps:"estimate" }), unsent: d.metadata.hasPendingWrites })).reverse();
+      renderMessages(); if (!snap.metadata.fromCache) markRead();
+    });
+}
+function loadOlder(){
+  const box = $("messages"), fromBottom = box.scrollHeight - box.scrollTop;
+  msgLimit += 30; keepScroll = fromBottom; listenMsgs(openId);
+}
+let keepScroll = null;
 function renderHead(){
   const c = openChatData; if (!c?.members) return;
   $("headName").textContent = chatTitle(c);
@@ -575,8 +749,11 @@ const FILE_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 function bubble(m, mine){
   const side = mine ? "me" : "them";
   if (m.type === "image") {
-    const src = urlCache[m.fileId] || m.thumb || "";
-    return `<div class="msg photo ${side}"><img data-fid="${m.fileId}" data-mime="${esc(m.mime)}" src="${src}" class="${urlCache[m.fileId]?"":"loading"}" style="aspect-ratio:${m.w||4}/${m.h||3}" alt="Photo"></div>`;
+    const ready = urlCache[m.fileId];
+    const src = ready || m.thumb || "";
+    const tap = !ready && saverOn();
+    const label = m.size ? `Tap to load · ${fmtSize(m.size)}` : "Tap to load photo";
+    return `<div class="msg photo ${side}"><img data-fid="${m.fileId}" data-mime="${esc(m.mime)}" src="${src}" class="${ready?"":"loading"}" ${tap?'data-tap="1"':""} style="aspect-ratio:${m.w||4}/${m.h||3}" alt="Photo">${tap?`<span class="tapload" data-fid="${m.fileId}">${label}</span>`:""}</div>`;
   }
   if (m.type === "file") {
     return `<button class="msg file ${side}" data-fid="${m.fileId}" data-mime="${esc(m.mime)}" data-name="${esc(m.name)}"><span class="ficon">${FILE_SVG}</span><span><b>${esc(m.name)}</b><small>${fmtSize(m.size)} · Tap to open</small></span></button>`;
@@ -587,8 +764,10 @@ function bubble(m, mine){
 function renderMessages(){
   const box = $("messages"), c = openChatData;
   const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 150;
-  let html = "", lastDay = "", prevSender = null;
-  lastMsgs.forEach(m => {
+  const cut = ms(c?.deletedAt?.[me.uid]);
+  const shown = cut ? lastMsgs.filter(m => ms(m.at) > cut) : lastMsgs;
+  let html = moreOlder && !cut ? `<button class="older" id="olderBtn">Show older messages</button>` : "", lastDay = "", prevSender = null;
+  shown.forEach(m => {
     const d = m.at ? new Date(ms(m.at)) : new Date();
     const day = d.toDateString();
     if (day !== lastDay) { lastDay = day; prevSender = null;
@@ -596,15 +775,16 @@ function renderMessages(){
     if (m.type === "system") { html += `<div class="sys">${esc(m.text)}</div>`; prevSender = null; return; }
     const mine = m.sender === me.uid;
     if (c?.isGroup && !mine && m.sender !== prevSender) html += `<div class="sender">${esc(nameOf(m.sender))}</div>`;
-    html += bubble(m, mine);
+    html += m.unsent ? bubble(m, mine).replace('class="msg ', 'class="msg unsent ') : bubble(m, mine);
     prevSender = m.sender;
   });
   pending.filter(p => p.cid === openId).forEach(p => {
     html += `<div class="msg me pending">${esc(p.label)} · ${p.pct}%</div>`;
   });
-  if (c?.members && lastMsgs.length) {
-    const last = [...lastMsgs].reverse().find(m => m.type !== "system");
-    if (last && last.sender === me.uid && last.at) {
+  if (c?.members && shown.length) {
+    const last = [...shown].reverse().find(m => m.type !== "system");
+    if (last && last.sender === me.uid && last.unsent) html += `<div class="seen">Sending…</div>`;
+    else if (last && last.sender === me.uid && last.at) {
       const seenBy = others(c).filter(u => ms(c.readAt?.[u]) >= ms(last.at));
       if (seenBy.length) html += `<div class="seen">${c.isGroup ? (seenBy.length === others(c).length ? "Seen by everyone" : "Seen by " + seenBy.map(firstName).join(", ")) : "Seen"}</div>`;
     }
@@ -612,10 +792,12 @@ function renderMessages(){
     if (typers.length) html += `<div class="typing-wrap"><div class="typing"><i></i><i></i><i></i></div>${c.isGroup ? esc(typers.map(firstName).join(", ")) : ""}</div>`;
   }
   box.innerHTML = html;
+  $("olderBtn")?.addEventListener("click", loadOlder);
   hydrate();
+  if (keepScroll !== null) { box.scrollTop = box.scrollHeight - keepScroll; keepScroll = null; return; }
   if (nearBottom || lastMsgs.at(-1)?.sender === me.uid) box.scrollTop = box.scrollHeight;
 }
-setInterval(() => { if (openId) { renderMessages(); renderHead(); } }, 5000);
+setInterval(() => { if (openId && !document.hidden) { renderMessages(); renderHead(); } }, 5000);
 
 // ---------- photos & files: storage in Firestore chunks ----------
 async function deliverFile(url, name){
@@ -648,11 +830,18 @@ function loadBlob(cid, fid, mime){
 }
 function hydrate(){
   const cid = openId;
-  $("messages").querySelectorAll("img.loading[data-fid]").forEach(img => {
+  $("messages").querySelectorAll("img.loading[data-fid]:not([data-tap])").forEach(img => {
     loadBlob(cid, img.dataset.fid, img.dataset.mime).then(url => { img.src = url; img.classList.remove("loading"); }).catch(()=>{});
   });
 }
 $("messages").addEventListener("click", async e => {
+  const tl = e.target.closest(".tapload");
+  if (tl) {
+    tl.textContent = "Loading…";
+    try { await loadBlob(openId, tl.dataset.fid, tl.previousElementSibling.dataset.mime); renderMessages(); }
+    catch { tl.textContent = "Couldn't load. Tap to retry"; delete loadingBlobs[tl.dataset.fid]; }
+    return;
+  }
   const img = e.target.closest("img[data-fid]");
   if (img) { const url = await loadBlob(openId, img.dataset.fid, img.dataset.mime);
     $("vImg").src = url; $("vSave").href = url; $("viewer").classList.remove("hidden"); return; }
@@ -680,13 +869,14 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") $("viewer").
 
 async function compressImage(file){
   const bmp = await createImageBitmap(file);
-  const keepOriginal = file.type === "image/gif" && file.size < 3e6;  // keep small GIFs animated
-  const scale = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+  const keepOriginal = file.type === "image/gif" && file.size < (saverOn() ? 5e5 : 3e6);  // keep small GIFs animated
+  const small = saverOn();
+  const scale = Math.min(1, (small ? 1024 : 1600) / Math.max(bmp.width, bmp.height));
   const w = Math.round(bmp.width * scale), h = Math.round(bmp.height * scale);
   const cv = Object.assign(document.createElement("canvas"), { width:w, height:h });
   cv.getContext("2d").drawImage(bmp, 0, 0, w, h);
-  const blob = keepOriginal ? file : await new Promise(r => cv.toBlob(r, "image/jpeg", 0.82));
-  const t = Object.assign(document.createElement("canvas"), { width:24, height:Math.max(1, Math.round(24*h/w)) });
+  const blob = keepOriginal ? file : await new Promise(r => cv.toBlob(r, "image/jpeg", small ? 0.6 : 0.82));
+  const t = Object.assign(document.createElement("canvas"), { width:40, height:Math.max(1, Math.round(40*h/w)) });
   t.getContext("2d").drawImage(bmp, 0, 0, t.width, t.height);
   return { blob, w, h, thumb: t.toDataURL("image/jpeg", 0.5) };
 }
@@ -705,6 +895,8 @@ async function uploadBlob(cid, blob, onPct){
 async function sendAttachment(file, asPhoto){
   const cid = openId;
   if (!asPhoto && file.size > MAX_FILE) { alert(`${file.name} is over 10 MB. Try a smaller file.`); return; }
+  if (!asPhoto && saverOn() && file.size > 1_000_000 &&
+      !confirm(`${file.name} is ${fmtSize(file.size)}. On a slow connection this can take several minutes. Send anyway?`)) return;
   const p = { cid, label: asPhoto ? "Sending photo" : `Sending ${file.name}`, pct: 0 };
   pending.push(p); renderMessages();
   try {
@@ -713,7 +905,7 @@ async function sendAttachment(file, asPhoto){
       const { blob, w, h, thumb } = await compressImage(file);
       if (blob.size > MAX_FILE) throw new Error("too big");
       const fileId = await uploadBlob(cid, blob, pct => { p.pct = pct; renderMessages(); });
-      msg = { type:"image", fileId, mime: blob.type, w, h, thumb, text:"", preview:"📷 Photo" };
+      msg = { type:"image", fileId, mime: blob.type, w, h, thumb, size: blob.size, text:"", preview:"📷 Photo" };
     } else {
       const fileId = await uploadBlob(cid, file, pct => { p.pct = pct; renderMessages(); });
       msg = { type:"file", fileId, mime: file.type || "application/octet-stream", name: file.name, size: file.size, text:"", preview:`📎 ${file.name}` };
@@ -731,18 +923,103 @@ $("fileBtn").onclick = () => $("fileIn").click();
 $("photoIn").onchange = e => { [...e.target.files].forEach(f => sendAttachment(f, true)); e.target.value = ""; };
 $("fileIn").onchange = e => { [...e.target.files].forEach(f => sendAttachment(f, false)); e.target.value = ""; };
 
+// ---------- push notifications (APK) ----------
+const Push = Cap.PushNotifications;
+let pushListeners = false;
+async function setupPush(){
+  if (!NATIVE || !Push) return;
+  try {
+    if (!pushListeners) {
+      pushListeners = true;
+      Push.addListener("registration", t => {
+        pushToken = t.value;
+        if (me) setDoc(doc(db,"tokens",me.uid), { tokens: arrayUnion(t.value) }, { merge:true }).catch(()=>{});
+      });
+      Push.addListener("pushNotificationActionPerformed", a => {
+        const id = a.notification?.data?.chatId; if (!id) return;
+        if (me) openChat(id); else openFromPush = id;
+      });
+      await Push.createChannel({ id:"messages", name:"Messages", description:"New chat messages", importance:5, visibility:1, vibration:true, lights:true });
+    }
+    let perm = await Push.checkPermissions();
+    if (perm.receive.startsWith("prompt")) perm = await Push.requestPermissions();
+    if (perm.receive === "granted") await Push.register();
+  } catch (e) { console.warn("push", e); }
+}
+async function renderNotif(){
+  if (!NATIVE || !Push) return;
+  $("notifBlock").classList.remove("hidden");
+  const p = await Push.checkPermissions().catch(() => ({ receive:"denied" }));
+  const on = p.receive === "granted";
+  $("notifState").textContent = !PUSH_URL ? "Not set up yet (needs the push server URL)." :
+    on ? "On. You'll get a notification for new messages." : "Off. Allow notifications to know when someone messages you.";
+  $("notifBtn").classList.toggle("hidden", on || !PUSH_URL);
+}
+$("notifBtn").onclick = async () => {
+  const p = await Push.requestPermissions();
+  if (p.receive === "granted") { await Push.register(); }
+  else alert("Notifications are blocked. Open your phone's Settings → Apps → Chika → Notifications and turn them on.");
+  renderNotif();
+};
+$("settingsBtn").addEventListener("click", renderNotif);
+
+// ---------- power saving: go quiet in the background, push wakes us up ----------
+let bgTimer = null, netPaused = false;
+function onHidden(){
+  clearTimeout(bgTimer);
+  bgTimer = setTimeout(async () => {
+    try { await waitForPendingWrites(db); } catch {}            // finish sending first
+    if (document.hidden) { disableNetwork(db).then(() => netPaused = true).catch(()=>{}); }
+  }, 30_000);
+}
+function onVisible(){
+  clearTimeout(bgTimer);
+  if (netPaused) { netPaused = false; enableNetwork(db).catch(()=>{}); }
+  if (me) { pingNow?.(); markRead(); }
+}
+document.addEventListener("visibilitychange", () => document.hidden ? onHidden() : onVisible());
+if (NATIVE && Cap.App) Cap.App.addListener("appStateChange", st => st.isActive ? onVisible() : onHidden());
+
+// ---------- no mobile data: offer plain SMS for 1:1 chats ----------
+function updateSmsBar(){
+  const show = !navigator.onLine && !!openChatData && !openChatData.isGroup;
+  $("smsBar").classList.toggle("hidden", !show);
+}
+addEventListener("online", updateSmsBar); addEventListener("offline", updateSmsBar);
+$("smsBtn").onclick = () => {
+  const other = others(openChatData)[0], key = "sms-" + other;
+  let num = getPref(key, "");
+  if (!num) {
+    num = (prompt(`${nameOf(other)}'s mobile number (saved on this phone only):`) || "").replace(/[^\d+]/g, "");
+    if (!num) return;
+    setPref(key, num);
+  }
+  const text = $("msgInput").value.trim();
+  location.href = `sms:${num}?body=${encodeURIComponent(text)}`;
+  $("msgInput").value = ""; updateSendBtn();
+};
+
 // ---------- compose ----------
 async function postMessage(cid, data, preview){
-  await addDoc(collection(db,"chats",cid,"messages"), { ...data, sender: me.uid, at: serverTimestamp() });
-  await updateDoc(doc(db,"chats",cid), { lastMessage: preview.slice(0,80), lastSender: me.uid, lastAt: serverTimestamp(),
+  const a = addDoc(collection(db,"chats",cid,"messages"), { ...data, sender: me.uid, at: serverTimestamp() });
+  const b = updateDoc(doc(db,"chats",cid), { lastMessage: preview.slice(0,80), lastSender: me.uid, lastAt: serverTimestamp(),
     ["typing."+me.uid]: null, ["readAt."+me.uid]: serverTimestamp() });
+  await Promise.all([a, b]);
+  notifyOthers(cid);
+}
+async function notifyOthers(cid){
+  if (!PUSH_URL || !me) return;
+  try {
+    const t = await me.getIdToken();
+    fetch(PUSH_URL, { method:"POST", headers:{ Authorization:"Bearer " + t, "Content-Type":"application/json" }, body: JSON.stringify({ chatId: cid }) }).catch(()=>{});
+  } catch {}
 }
 const SEND_SVG = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.4 20.4 21 12 3.4 3.6l.1 6.5L15 12 3.5 13.9z"/></svg>`;
 function updateSendBtn(){ $("sendBtn").innerHTML = $("msgInput").value.trim() ? SEND_SVG : "👍"; }
 $("msgInput").addEventListener("input", () => {
   const t = $("msgInput"); t.style.height = "auto"; t.style.height = t.scrollHeight + "px";
   updateSendBtn();
-  if (openId && Date.now() - lastTypingSent > 3000) {
+  if (openId && !saverOn() && Date.now() - lastTypingSent > 3000) {
     lastTypingSent = Date.now();
     updateDoc(doc(db,"chats",openId), { ["typing."+me.uid]: serverTimestamp() }).catch(()=>{});
   }

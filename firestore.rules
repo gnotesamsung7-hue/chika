@@ -8,6 +8,11 @@ service cloud.firestore {
       allow write: if request.auth != null && request.auth.uid == uid;
     }
 
+    // Push notification IDs for each person's phones: private to that person
+    match /tokens/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
     // Chats (1:1 and groups): only members can see or change them
     match /chats/{chatId} {
       function isMember() {

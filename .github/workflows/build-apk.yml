@@ -29,11 +29,31 @@ jobs:
       - name: Copy web app into www
         run: mkdir -p www && cp index.html www/
 
+      - name: Build Firebase into the app (nothing to download when it opens, good for 2G)
+        run: |
+          V=10.12.2
+          mkdir -p www/lib
+          for f in app auth firestore; do
+            curl -fsSL "https://www.gstatic.com/firebasejs/$V/firebase-$f.js" -o "www/lib/firebase-$f.js"
+          done
+          sed -i "s#https://www.gstatic.com/firebasejs/$V/#./#g" www/lib/*.js
+          sed -i "s#https://www.gstatic.com/firebasejs/$V/#./lib/#g" www/index.html
+          ls -la www/lib
+          grep -n "gstatic.com/firebasejs" www/index.html www/lib/*.js || echo "All Firebase code is bundled."
+
       - name: Create Android project
         run: npx cap add android
 
       - name: Generate icons and splash
         run: npx capacitor-assets generate --android --iconBackgroundColor '#000000' --splashBackgroundColor '#000000' --splashBackgroundColorDark '#000000'
+
+      - name: Add notification icon and Firebase Android config
+        run: |
+          mkdir -p android/app/src/main/res/drawable
+          cp assets/notification-icon.png android/app/src/main/res/drawable/ic_stat_chika.png
+          sed -i 's#<uses-permission android:name="android.permission.INTERNET" />#<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />#' android/app/src/main/AndroidManifest.xml
+          grep -n "POST_NOTIFICATIONS" android/app/src/main/AndroidManifest.xml
+          if [ -f google-services.json ]; then cp google-services.json android/app/; echo "Push notifications enabled"; else echo "::warning::google-services.json missing - push notifications won't work"; fi
 
       - name: Sync web app and plugins
         run: npx cap sync android

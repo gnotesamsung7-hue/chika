@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "12436813384",
+    "project_id": "chika-168bc",
+    "storage_bucket": "chika-168bc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:12436813384:android:f1895a5b159562394d8a7d",
+        "android_client_info": {
+          "package_name": "com.markdave.chika"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBdCAjXiwcRN2yBRGQYGNZ7DowqlYNR0Uw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

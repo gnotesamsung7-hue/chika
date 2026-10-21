@@ -66,6 +66,9 @@ input,textarea{font:inherit;color:inherit}
 .btn:disabled{opacity:.6}
 .link{color:var(--accent);font-weight:600;margin-top:16px;display:block;width:100%;text-align:center}
 .err{color:var(--danger);font-size:14px;min-height:20px;margin-top:10px}
+.ok{color:var(--ink);background:var(--panel);border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;font-size:14px;line-height:1.45;margin-top:10px}
+.forgot{display:block;margin:2px 0 6px auto;color:var(--muted);font-size:13px;font-weight:600}
+#resetTitle{font-size:20px;margin:22px 0 0}
 
 /* Shell */
 #app{height:100%;display:flex}
@@ -214,12 +217,15 @@ setTimeout(function(){ var b=document.getElementById("boot"); if (b && !b.classL
 <section id="auth" class="hidden">
   <form class="auth-card" id="authForm">
     <div class="logo">chika<span></span></div>
-    <p class="tag">Chat with your family and friends.</p>
+    <h2 id="resetTitle" class="hidden">Reset your password</h2>
+    <p class="tag" id="authTag">Chat with your family and friends.</p>
     <input class="field hidden" id="nameIn" placeholder="Your name" autocomplete="name">
     <input class="field" id="emailIn" type="email" placeholder="Email" autocomplete="email" required>
     <input class="field" id="passIn" type="password" placeholder="Password (6+ characters)" autocomplete="current-password" required minlength="6">
+    <button class="forgot" id="forgotBtn" type="button">Forgot password?</button>
     <button class="btn" id="authBtn" type="submit">Log in</button>
     <div class="err" id="authErr"></div>
+    <div class="ok hidden" id="authOk"></div>
     <button class="link" id="toggleAuth" type="button">New here? Create an account</button>
   </form>
 </section>
@@ -313,6 +319,7 @@ setTimeout(function(){ var b=document.getElementById("boot"); if (b && !b.classL
     </div>
     <h3>Account</h3>
     <p id="setWho"></p>
+    <button class="btn ghost" id="changePassBtn" type="button">Change password</button>
     <button class="btn danger" id="logoutBtn" type="button">Log out</button>
   </div>
 </div>
@@ -339,14 +346,17 @@ const firebaseConfig = {
 };
 // =============================================================
 // 2. PASTE YOUR CLOUDFLARE WORKER URL HERE (for push notifications), e.g. "https://chika-push.yourname.workers.dev"
-const PUSH_URL = "";
+const PUSH_URL = "https://chika-push.gnotesamsung7.workers.dev";
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword,
-  updateProfile, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  updateProfile, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, setDoc, getDocs, collection, query, where, orderBy, limit, onSnapshot,
   addDoc, serverTimestamp, updateDoc, arrayUnion, arrayRemove, disableNetwork, enableNetwork, waitForPendingWrites } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
+const $ = id => document.getElementById(id);
+const NATIVE = !!window.Capacitor?.isNativePlatform?.();
+const Cap = window.Capacitor?.Plugins || {};
 const fb = initializeApp(firebaseConfig);
 const auth = getAuth(fb);
 let db;
@@ -364,9 +374,6 @@ addEventListener("online", updateNetBar); addEventListener("offline", updateNetB
 
 // Web only: cache the app so it opens instantly next time, even on 2G (the APK already has it built in)
 if (!NATIVE && "serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(()=>{});
-const $ = id => document.getElementById(id);
-const NATIVE = !!window.Capacitor?.isNativePlatform?.();
-const Cap = window.Capacitor?.Plugins || {};
 
 const MAX_FILE = 10 * 1024 * 1024;     // 10 MB per file
 const CHUNK = 700_000;                  // base64 chars per Firestore doc (<1 MB limit)
@@ -413,21 +420,38 @@ async function findUserByEmail(email){
 const sysMsg = (cid, text) => addDoc(collection(db,"chats",cid,"messages"), { type:"system", text, sender: me.uid, at: serverTimestamp() });
 
 // ---------- auth ----------
-let signingUp = false;
-$("toggleAuth").onclick = () => {
-  signingUp = !signingUp;
-  $("nameIn").classList.toggle("hidden", !signingUp);
-  $("nameIn").required = signingUp;
-  $("authBtn").textContent = signingUp ? "Create account" : "Log in";
-  $("toggleAuth").textContent = signingUp ? "Have an account? Log in" : "New here? Create an account";
-  $("authErr").textContent = "";
-};
+// ---------- log in / sign up / reset password ----------
+let authMode = "login";
+function setAuthMode(m){
+  authMode = m;
+  const signup = m === "signup", reset = m === "reset";
+  $("nameIn").classList.toggle("hidden", !signup); $("nameIn").required = signup;
+  $("passIn").classList.toggle("hidden", reset);   $("passIn").required = !reset;
+  $("passIn").autocomplete = signup ? "new-password" : "current-password";
+  $("forgotBtn").classList.toggle("hidden", m !== "login");
+  $("resetTitle").classList.toggle("hidden", !reset);
+  $("authTag").textContent = reset ? "Enter your email and we'll send you a link to set a new password."
+                                   : "Chat with your family and friends.";
+  $("authBtn").textContent = signup ? "Create account" : reset ? "Send reset link" : "Log in";
+  $("toggleAuth").textContent = m === "login" ? "New here? Create an account" : "Back to log in";
+  $("authErr").textContent = ""; $("authOk").classList.add("hidden");
+}
+$("toggleAuth").onclick = () => setAuthMode(authMode === "login" ? "signup" : "login");
+$("forgotBtn").onclick = () => { setAuthMode("reset"); $("emailIn").focus(); };
+
+async function sendReset(email){
+  await sendPasswordResetEmail(auth, email);
+  $("authOk").textContent = `If ${email} has a Chika account, a reset link is on its way. Check your inbox (and the Spam folder), tap the link, choose a new password, then come back and log in.`;
+  $("authOk").classList.remove("hidden");
+}
 $("authForm").onsubmit = async e => {
   e.preventDefault();
   const email = $("emailIn").value.trim(), pass = $("passIn").value, name = $("nameIn").value.trim();
-  $("authBtn").disabled = true; $("authErr").textContent = "";
+  $("authBtn").disabled = true; $("authErr").textContent = ""; $("authOk").classList.add("hidden");
   try {
-    if (signingUp) {
+    if (authMode === "reset") {
+      await sendReset(email);
+    } else if (authMode === "signup") {
       const cred = await createUserWithEmailAndPassword(auth, email, pass);
       await updateProfile(cred.user, { displayName: name });
       await setDoc(doc(db,"users",cred.user.uid), { name, email, emailLower: email.toLowerCase(), lastSeen: serverTimestamp() });
@@ -435,11 +459,22 @@ $("authForm").onsubmit = async e => {
       await signInWithEmailAndPassword(auth, email, pass);
     }
   } catch (err) {
-    const map = { "auth/invalid-credential":"Wrong email or password.", "auth/email-already-in-use":"That email already has an account. Log in instead.",
-      "auth/weak-password":"Use at least 6 characters.", "auth/invalid-email":"That email doesn't look right." };
+    const map = { "auth/invalid-credential":"Wrong email or password. Tap \"Forgot password?\" if you can't remember it.",
+      "auth/email-already-in-use":"That email already has an account. Log in instead.",
+      "auth/weak-password":"Use at least 6 characters.", "auth/invalid-email":"That email doesn't look right.",
+      "auth/missing-email":"Type your email first.",
+      "auth/too-many-requests":"Too many tries. Wait a few minutes, then try again.",
+      "auth/network-request-failed":"No internet connection. Try again when you're online." };
     $("authErr").textContent = map[err.code] || err.message;
   }
   $("authBtn").disabled = false;
+};
+
+// Settings: send yourself a reset link to change your password
+$("changePassBtn").onclick = async () => {
+  if (!me?.email) return;
+  try { await sendPasswordResetEmail(auth, me.email); alert(`We sent a link to ${me.email}. Open it to choose a new password.`); }
+  catch { alert("Couldn't send the email right now. Check your connection and try again."); }
 };
 $("logoutBtn").onclick = async () => {
   $("setSheet").classList.add("hidden");
